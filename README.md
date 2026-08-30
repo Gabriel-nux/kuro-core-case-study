@@ -98,4 +98,4 @@ graph TB
     UC5 --> UC6
 ![Demonstração do Sistema](screenshots/diagram.png)
 ![Demonstração do Sistema](screenshots/mains.png)
-![Demonstração do Sistema](screenshots/overseer.png)
+![Demonstração do Sistema](screenshots/command.png)
