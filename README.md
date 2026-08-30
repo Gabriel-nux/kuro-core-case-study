@@ -97,5 +97,5 @@ graph TB
     UC4 --> UC5
     UC5 --> UC6
 ![Demonstração do Sistema](screenshots/diagram.png)
-![Demonstração do Sistema](screenshots/main.png)
+![Demonstração do Sistema](screenshots/mains.png)
 ![Demonstração do Sistema](screenshots/overseer.png)
