@@ -1,4 +1,5 @@
 Documentação de Arquitetura: Kuro Industries SaaS
+
 Este documento detalha a topologia, o fluxo de dados e os protocolos de segurança do ecossistema Kuro SaaS. O sistema adota uma arquitetura híbrida (Edge-to-Cloud), onde 100% do processamento de dados e inferência de Inteligência Artificial ocorre localmente na máquina do cliente (Edge Node), enquanto a nuvem (Cloud API) atua exclusivamente como um Gatekeeper de licenciamento e telemetria.
 
 1. O Motor de Processamento (Edge Node Core)
