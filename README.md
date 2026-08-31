@@ -56,7 +56,7 @@ config/presets/: Arquivos .yaml com as regras de negócio e prompts gerados pela
 O diagrama abaixo ilustra a segregação entre o processamento estritamente local, a validação assíncrona na nuvem e o poder de controle do Administrador.
 
 Snippet de código
-graph TB
+mermaid
     subgraph CC ["Central Command (Painel Admin)"]
         UC1((Gerar Token de Máquina))
         UC2((Acionar Killswitch / Bloqueio))
