@@ -55,6 +55,7 @@ config/presets/: Arquivos .yaml com as regras de negócio e prompts gerados pela
 5. Diagrama de Arquitetura e Casos de Uso (UML)
 O diagrama abaixo ilustra a segregação entre o processamento estritamente local, a validação assíncrona na nuvem e o poder de controle do Administrador.
 
+
 ![Demonstração do Sistema](screenshots/diagram.png)
 ![Demonstração do Sistema](screenshots/mains.png)
 ![Demonstração do Sistema](screenshots/command.png)
