@@ -23,7 +23,7 @@ O coração do sistema é um motor de ingestão e processamento de dados complet
 3. Segurança, Licenciamento e Distribuição (DRM)
     -Como o sistema é instalado na infraestrutura do cliente, foram aplicadas táticas de Software DRM (Digital Rights Management) e Zero Trust Architecture para proteger a propriedade intelectual e garantir a monetização.
 
-A. Proteção de Código e Empacotamento
+    A. Proteção de Código e Empacotamento
     -Ofuscação e Criptografia: O código-fonte Python é ofuscado e encriptado antes do build, impedindo engenharia reversa.
 
    -Distribuição Comercial: O ecossistema é convertido em executáveis independentes via PyInstaller e orquestrado junto com Docker Compose (para levantar os servidores locais do Llama/LLaVA). O instalador final é gerado via Inno Setup.
