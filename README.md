@@ -55,47 +55,50 @@ config/presets/: Arquivos .yaml com as regras de negócio e prompts gerados pela
 5. Diagrama de Arquitetura e Casos de Uso (UML)
 O diagrama abaixo ilustra a segregação entre o processamento estritamente local, a validação assíncrona na nuvem e o poder de controle do Administrador.
 
-mermaid
-    subgraph CC ["Central Command (Painel Admin)"]
-        UC1((Gerar Token de Máquina))
-        UC2((Acionar Killswitch / Bloqueio))
-        UC3((Auditar Licenças))
-    end
+```mermaid
+graph TB
 
-    subgraph API ["Cloud SaaS API (Licenciamento)"]
-        UC4((Validar Domínio Customizado))
-        UC5((Verificar Heartbeat X-API-KEY))
-        UC6[(PostgreSQL - Tokens e Status)]
-    end
+subgraph CC ["Central Command (Painel Admin)"]
+    UC1((Gerar Token de Máquina))
+    UC2((Acionar Killswitch / Bloqueio))
+    UC3((Auditar Licenças))
+end
 
-    subgraph EDGE ["Edge Node (App Cliente - DRM Protegido)"]
-        UC7((Formulário UI -> Auto-Prompt IA))
-        UC8((Troca Dinâmica .env via YAML))
-        UC9((Polars Lazy ETL -> Correção))
-        UC10((Descarte em DLQ))
-        UC11((Classificação de Imagem -> LLaVA))
-        UC12((Validação de Token - 7 Dias Cache))
-    end
+subgraph API ["Cloud SaaS API (Licenciamento)"]
+    UC4((Validar Domínio Customizado))
+    UC5((Verificar Heartbeat X-API-KEY))
+    UC6[(PostgreSQL - Tokens e Status)]
+end
 
-    Admin[SysAdmin] --> UC1
-    Admin --> UC2
-    Admin --> UC3
+subgraph EDGE ["Edge Node (App Cliente - DRM Protegido)"]
+    UC7((Formulário UI -> Auto-Prompt IA))
+    UC8((Troca Dinâmica .env via YAML))
+    UC9((Polars Lazy ETL -> Correção))
+    UC10((Descarte em DLQ))
+    UC11((Classificação de Imagem -> LLaVA))
+    UC12((Validação de Token - 7 Dias Cache))
+end
 
-    UC1 -. include .-> UC6
-    UC2 -. include .-> UC6
-    UC3 -. include .-> UC6
+Admin[SysAdmin] --> UC1
+Admin --> UC2
+Admin --> UC3
 
-    AppLocal[Usuário Local] --> UC7
-    AppLocal --> UC8
-    AppLocal --> UC9
-    AppLocal --> UC11
+UC1 -. include .-> UC6
+UC2 -. include .-> UC6
+UC3 -. include .-> UC6
 
-    UC9 --> UC10
-    
-    %% Comunicação de Rede Isolada
-    UC12 -- "Ping Periódico (Max 7 dias)" --> UC4
-    UC4 --> UC5
-    UC5 --> UC6
+AppLocal[Usuário Local] --> UC7
+AppLocal --> UC8
+AppLocal --> UC9
+AppLocal --> UC11
+
+UC9 --> UC10
+
+%% Comunicação de Rede Isolada
+UC12 -- "Ping Periódico (Max 7 dias)" --> UC4
+UC4 --> UC5
+UC5 --> UC6
+
 ![Demonstração do Sistema](screenshots/diagram.png)
 ![Demonstração do Sistema](screenshots/mains.png)
 ![Demonstração do Sistema](screenshots/command.png)
