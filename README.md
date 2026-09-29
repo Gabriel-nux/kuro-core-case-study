@@ -42,6 +42,7 @@ graph LR
     style A fill:#1e1e1e,stroke:#00aaff,stroke-width:2px,color:#fff
     style B fill:#1e1e1e,stroke:#ffaa00,stroke-width:2px,color:#fff
     style C fill:#1e1e1e,stroke:#00ffaa,stroke-width:2px,color:#fff
+```
 
 Regra de Isolamento Físico: Esta segregação não é apenas concetual, é uma regra de processo. Os três repositórios nunca são aninhados um dentro do outro. Isto garante que o código-servidor e as ferramentas administrativas jamais sejam acidentalmente empacotados no instalador distribuído ao cliente final.
 Motor de Processamento
