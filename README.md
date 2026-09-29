@@ -1,61 +1,104 @@
-Documentação de Arquitetura: Kuro Industries SaaS
+Kuro Industries — Edge AI Data Processing Platform
 
-Este documento detalha a topologia, o fluxo de dados e os protocolos de segurança do ecossistema Kuro SaaS. O sistema adota uma arquitetura híbrida (Edge-to-Cloud), onde 100% do processamento de dados e inferência de Inteligência Artificial ocorre localmente na máquina do cliente (Edge Node), enquanto a nuvem (Cloud API) atua exclusivamente como um Gatekeeper de licenciamento e telemetria.
+Estudo de Caso Técnico: Arquitetura de processamento de dados sensíveis com IA local e licenciamento Zero Trust, projetada para operar inteiramente dentro da infraestrutura do cliente.
+O Problema
 
-1. O Motor de Processamento (Edge Node Core)
-O coração do sistema é um motor de ingestão e processamento de dados completamente agnóstico. Ele não é engessado a um formato de planilha específico, adaptando-se dinamicamente às regras definidas pelo usuário.
+Processar planilhas de negócio com inferência de IA quando os dados não podem, por exigência contratual, sair da máquina do cliente.
 
-    -Alta Performance com Polars (Lazy Evaluation): A leitura e transformação dos dados utilizam os métodos Lazy da biblioteca Polars (como scan_csv e collect). Isso permite que o sistema crie um plano de execução otimizado antes de processar, garantindo o manuseio de arquivos gigantescos sem estourar a memória RAM da máquina local.
+Isso descarta qualquer arquitetura SaaS centralizada convencional e exige repensar de onde para onde cada responsabilidade se move: o processamento de dados e a inferência de IA devem ocorrer 100% localmente. A nuvem existe apenas como um gatekeeper para governar quem tem o direito de rodar o software.
+Visão Geral da Arquitetura
 
-    -Resiliência e Dead Letter Queue (DLQ): O motor foi desenhado para nunca quebrar a esteira de processamento por erros de tipagem ou formatação. O sistema corrige automaticamente o que é possível. Linhas ou arquivos com erros irrecuperáveis não derrubam a aplicação; eles são ignorados pelo fluxo principal e redirecionados para uma DLQ (Dead Letter Queue) para auditoria posterior.
+A solução foi desenhada em três serviços fisicamente isolados, cada um com uma única responsabilidade e uma única audiência:
+Plaintext
 
-    -Dashboard e Gestão de Estado: A interface permite que o usuário baixe a planilha final totalmente higienizada (após o tratamento e exclusão dos itens na DLQ). Além disso, o frontend possui controles diretos para limpar os caches de planilhas e de imagens, impedindo o acúmulo de arquivos temporários no disco.
+┌────────────────────┐        ┌────────────────────┐        ┌────────────────────┐
+│     EDGE NODE      │        │     CLOUD API      │        │    ADMIN PANEL     │
+│  (Máquina do       │───────▶│  (Licenciamento,   │◀───────│  (Equipe interna,  │
+│   cliente)         │        │   telemetria,      │        │   nunca distribuído)
+│                    │        │   suporte via WA)  │        │                    │
+│  Processamento +   │◀───────│                    │        │  Gestão de licenças,
+│  IA Local          │        │  (Nunca vê dados)  │        │  bloqueios e HWID  │
+└────────────────────┘        └────────────────────┘        └────────────────────┘
 
-2. Gestão Dinâmica de Perfis e IA
-    -A aplicação adapta seu comportamento de negócio estruturalmente sem precisar de recompilação, baseando-se em arquivos de configuração flexíveis.
+Regra de Isolamento Físico: Essa segregação não é apenas conceitual, é uma regra de processo. Os três repositórios nunca são aninhados um dentro do outro. Isso garante que o código-servidor e as ferramentas administrativas jamais sejam acidentalmente empacotados no instalador distribuído ao cliente final.
+Motor de Processamento
 
-    -Presets em YAML e Injeção no .env: As regras de leitura (separadores, colunas alvo, restrições) e as configurações de IA são salvas em arquivos .yaml. No frontend, o usuário seleciona o perfil desejado através de um Radio Button. Essa ação dispara um script Python que substitui as variáveis em tempo de execução no arquivo .env, alterando o comportamento do software instantaneamente.
+O core do sistema foi projetado para eficiência de memória e resiliência contra dados malformados:
 
-    -Auto-Prompting Inteligente: O usuário não precisa saber fazer engenharia de prompt. Ele preenche um formulário simples no frontend sobre o que deseja analisar, e o sistema utiliza a própria IA para redigir um "Prompt Profissional" otimizado, que será salvo no preset do cliente e usado nas inferências subsequentes.
+    Avaliação Preguiçosa (Lazy Evaluation): A leitura, validação e deduplicação de planilhas via Polars constrói um plano de execução antes de ler qualquer linha, evitando carregar o arquivo inteiro em memória.
 
-    -Pipeline Condicional de Visão Computacional: O sistema suporta upload de imagens. Uma IA inicial atua como classificador e filtro. Dependendo do resultado dessa triagem (se a imagem atender aos critérios de negócio), o fluxo aciona o modelo LLaVA para uma análise visual profunda.
+    Inferência de IA em Blocos: A etapa mais cara (LLMs locais) consome dados em lotes de tamanho fixo. O pico de memória permanece constante independentemente de o arquivo ter 1.000 ou 500.000 registros, mantendo o uso de RAM achatado.
 
-3. Segurança, Licenciamento e Distribuição (DRM)
-    -Como o sistema é instalado na infraestrutura do cliente, foram aplicadas táticas de Software DRM (Digital Rights Management) e Zero Trust Architecture para proteger a propriedade intelectual e garantir a monetização.
+    Fila de Mensagens Mortas (Dead Letter Queue): Nenhum erro de formatação interrompe o processamento do lote. Registros problemáticos são isolados em uma DLQ com o motivo exato do erro para auditoria, nunca descartados silenciosamente.
 
-A. Proteção de Código e Empacotamento
-    -Ofuscação e Criptografia: O código-fonte Python é ofuscado e encriptado antes do build, impedindo engenharia reversa.
+    Disjuntor (Circuit Breaker): Falhas consecutivas na IA são tratadas como indisponibilidade do serviço (não erro de dado), interrompendo o job de forma controlada para evitar ruído.
 
-   -Distribuição Comercial: O ecossistema é convertido em executáveis independentes via PyInstaller e orquestrado junto com Docker Compose (para levantar os servidores locais do Llama/LLaVA). O instalador final é gerado via Inno Setup.
+    Motor de Regras Plugável: A lógica de negócio é carregada dinamicamente. Colunas, formatos e vocabulário são definidos por configuração declarativa, não no código-fonte, permitindo fallback para regras genéricas.
 
-   -Trava de Acesso Dupla: O link de download do instalador exige uma senha inicial. Mesmo após instalado, o software é um "casca inútil" até que o administrador crie um Token Específico e Único para a máquina do cliente e o valide na nuvem.
+Pipeline Condicional de IA e Visão Computacional
 
-B. Cloud API e Telemetria (Heartbeat)
-    -Isolamento de Dados: A API em nuvem (hospedada no Render com banco PostgreSQL via Supabase) não tem acesso a nenhum arquivo ou dado processado localmente. Ela serve apenas para validar tokens.
+Abstraímos a complexidade da interação com modelos locais para o usuário final:
 
-   -Evasão de Firewalls Corporativos: Para evitar que proxys ou firewalls de clientes bloqueiem a comunicação com serviços de nuvem conhecidos, a API responde através de um domínio próprio customizado, mascarando a origem do tráfego.
+    Auto-Prompting Inteligente: O operador descreve sua intenção em linguagem natural no frontend. Um modelo menor redige e salva um prompt profissional otimizado no perfil do cliente para inferências futuras.
 
-   -Tolerância Offline de 7 Dias: Reconhecendo que há clientes com máquinas em ambientes restritos (air-gapped ou com rede instável), o sistema faz o Heartbeat (validação do token na API) e armazena um cache criptografado de autorização. O software só exige uma conexão com a internet uma vez a cada 7 dias. Se não houver revalidação nesse período, o motor local é bloqueado.
+    Extração Multimodal (LLaVA): Para registros com imagens anexas, o sistema aciona uma segunda etapa de inferência com um modelo de visão computacional local. A arquitetura de fallback garante que essa etapa pesada seja ignorada em registros puramente textuais.
 
-   -Killswitch: O painel do administrador (Central Command) possui um botão de Killswitch. Ao ser acionado, o token do cliente é revogado no banco de dados. Na próxima checagem de rede (ou término do período de 7 dias), o software do cliente se desativa permanentemente.
+Camada de Licenciamento (Zero Trust)
 
-4. Estrutura de Diretórios (Data Pipeline Local)
-O fluxo físico de arquivos reflete o cuidado com a segregação de dados e o padrão DLQ:
+Sem ofuscação de binário e sem visibilidade dos dados processados, a proteção da propriedade intelectual depende 100% do protocolo Edge-Cloud:
 
-data/input/: Ponto de entrada (CSVs originais e imagens brutas).
+    Vínculo por Hardware (Trust-on-First-Use): Cada licença se amarra ao hardware (UUID) na primeira ativação válida. Tentativas de uso em outras máquinas são recusadas automaticamente pela API.
 
-data/processing/: Arquivos em uso (Lazy Evaluation e Inferência IA).
+    Cache Offline Assinado (HMAC-SHA256): O sistema tolera instabilidade de rede operando em período de carência. A integridade do arquivo .kuro_sync é garantida por assinatura atrelada ao HWID da máquina. Mudar a data ou copiar o arquivo invalida o acesso via comparação de tempo constante (hmac.compare_digest).
 
-data/success/: Planilhas higienizadas prontas para download via Dashboard.
+    Resposta Assimétrica a Falhas (Killswitch): A thread de licenciamento distingue erros definitivos (401/403) de instabilidades (5xx/Timeout). Apenas negações definitivas encerram o processo na hora, prevenindo que o sistema caia por instabilidade da API.
 
-data/error_dlq/: (Dead Letter Queue) - Destino das linhas ou arquivos irrecuperáveis.
+    Princípio do Menor Privilégio: O Edge Node possui apenas tokens escopados ao próprio cliente, nunca trafegando a chave mestra (X-API-KEY) administrativa nas validações.
 
-config/presets/: Arquivos .yaml com as regras de negócio e prompts gerados pela IA.
+Privacidade por Design
 
-5. Diagrama de Arquitetura e Casos de Uso (UML)
-O diagrama abaixo ilustra a segregação entre o processamento estritamente local, a validação assíncrona na nuvem e o poder de controle do Administrador.
+O maior inibidor de adoção de IA no ambiente corporativo é o risco de vazamento de dados. Esta arquitetura trata isso como requisito estrutural:
 
+    Zero-Data Egress: O processamento ocorre 100% no cliente. A Cloud API atua exclusivamente como gatekeeper de licenças e nunca recebe dados, planilhas ou conteúdo de negócio.
 
-![Demonstração do Sistema](screenshots/diagram.png)
+    Superfície de Auditoria Reduzida: Ao garantir inferência no Edge, eliminamos a necessidade de Acordos de Processamento de Dados (DPAs) com provedores de nuvem (ex: OpenAI, AWS), facilitando a conformidade com frameworks como LGPD e GDPR.
+
+Automação de Suporte via WhatsApp
+
+Integrado diretamente ao mesmo backend de licenciamento, sem infraestrutura adicional (via Meta Cloud API):
+
+    Notificação Proativa: Alertas automáticos ao fim de pipelines longos, eliminando acompanhamento manual.
+
+    Suporte Técnico Auto-Atendido: Usuários enviam códigos de erro e recebem vídeos curtos de resolução.
+
+    Gist Cache Fallback: A base de conhecimento roda num Gist público com TTL em memória. O suporte é atualizável em tempo real sem redeploys, e degrada graciosamente servindo o último cache válido caso o GitHub fique indisponível.
+
+Engenharia de Qualidade
+
+A estabilidade da ponte Edge-Cloud é rigorosamente testada:
+
+    81 Testes Automatizados: Cobrem os backends contra vetores adversariais (adulteração de cache offline, clonagem de HWID, simulação de timeouts e payloads malformados).
+
+    Integração Real: O CI/CD roda contra instâncias reais de PostgreSQL (via GitHub Actions), garantindo que o comportamento reflita o ambiente de produção.
+
+    Regressão de Performance: Testes empíricos com dados sintéticos em escala para comprovar (e não apenas assumir) o comportamento de memória do motor de processamento.
+
+Stack Técnica
+
+    Edge Node: Python, Polars, CustomTkinter, LLaVA / LLMs Locais (Inferência on-device)
+
+    Cloud API: Flask, SQLAlchemy, PostgreSQL, Meta Cloud API
+
+    DevOps / Qualidade: pytest, GitHub Actions, Render
+
+Maturidade e Limitações Conhecidas
+
+Este projeto documenta tanto suas decisões deliberadas quanto suas limitações conhecidas, atualmente priorizadas no roadmap técnico:
+
+    Migração de Schema: Sem integração formal com o Alembic; alterações de banco em produção dependem de comandos ALTER TABLE manuais e idempotentes no boot (suporta novas colunas, mas falha em mutações complexas).
+
+    Rate Limiting: As rotas públicas da API atualmente não possuem limitação de taxa estrita.
+
+    Painel Admin: Ações de manutenção de infraestrutura (resetar HWID, atualizar telefone) são feitas diretamente via chamadas de API, aguardando implementação de UI no SaaS Admin.
 ![Demonstração do Sistema](screenshots/mains.png)
 ![Demonstração do Sistema](screenshots/command.png)
