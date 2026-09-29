@@ -9,16 +9,27 @@ Isso descarta qualquer arquitetura SaaS centralizada convencional e exige repens
 Visão Geral da Arquitetura
 
 A solução foi desenhada em três serviços fisicamente isolados, cada um com uma única responsabilidade e uma única audiência:
-Plaintext
 
-┌────────────────────┐        ┌────────────────────┐        ┌────────────────────┐
-│     EDGE NODE      │        │     CLOUD API      │        │    ADMIN PANEL     │
-│  (Máquina do       │───────▶│  (Licenciamento,   │◀───────│  (Equipe interna,  │
-│   cliente)         │        │   telemetria,      │        │   nunca distribuído)
-│                    │        │   suporte via WA)  │        │                    │
-│  Processamento +   │◀───────│                    │        │  Gestão de licenças,
-│  IA Local          │        │  (Nunca vê dados)  │        │  bloqueios e HWID  │
-└────────────────────┘        └────────────────────┘        └────────────────────┘
+```mermaid
+graph LR
+    subgraph Cliente
+    A[💻 EDGE NODE<br/>Processamento + IA Local]
+    end
+    
+    subgraph Nuvem Kuro
+    B((☁️ CLOUD API<br/>Licenciamento & Telemetria))
+    end
+    
+    subgraph Interno Kuro
+    C[🛡️ ADMIN PANEL<br/>Gestão de Licenças]
+    end
+
+    A -->|Valida HWID / Token<br/>Zero Data Egress| B
+    C -->|Gere Bloqueios / HWID| B
+
+    style A fill:#1e1e1e,stroke:#00aaff,stroke-width:2px,color:#fff
+    style B fill:#1e1e1e,stroke:#ffaa00,stroke-width:2px,color:#fff
+    style C fill:#1e1e1e,stroke:#00ffaa,stroke-width:2px,color:#fff
 
 Regra de Isolamento Físico: Essa segregação não é apenas conceitual, é uma regra de processo. Os três repositórios nunca são aninhados um dentro do outro. Isso garante que o código-servidor e as ferramentas administrativas jamais sejam acidentalmente empacotados no instalador distribuído ao cliente final.
 Motor de Processamento
