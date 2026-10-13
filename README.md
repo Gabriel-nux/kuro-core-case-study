@@ -126,3 +126,9 @@ Este projeto documenta tanto suas decisões deliberadas quanto suas limitações
     Painel Admin: Ações de manutenção de infraestrutura (redefinir HWID, atualizar telefone) são feitas diretamente via chamadas de API, aguardando implementação de interface gráfica no SaaS Admin.
 ![Demonstração do Sistema](screenshots/mains.png)
 ![Demonstração do Sistema](screenshots/command.png)
+
+---
+
+## Estudo de caso complementar
+
+[Kuro SaaS: licenciamento, suporte agentic e painel administrativo](docs/kuro-saas-ecosystem.md) — a contraparte de nuvem e operação deste produto.
